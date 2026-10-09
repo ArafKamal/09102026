@@ -37,19 +37,41 @@ int main(void) {
         // PID 1 è systemD
         // Qua dentro siamo dentro al processo figlio
 
+        close(file_descriptor[0]); // se ho deciso che uso fd[0] per un processo, fd[1] non serve (qualcosa che bisogna chiudere)
+
+        sleep(3); // test del wait automatico del Kernel
+
         char msg[] = "Sutidiate per favore anche TPSIT"; // messaggio da mandare
-        write(file_descriptor[1], msg, sizeof(msg)); // Come si manda il messaggio, 3 parametri
+        if (write(file_descriptor[1], msg, sizeof(msg) /*-1*/ ) == -1) { // Come si manda il messaggio, 3 parametri
+            perror("Errore write pipe");
+        }
         // diff fra size of e strlen, sizeof mette anche \0, il terminatore, con strlen no (toglie terminatore)
         // strlen manda la lunghezza, sizeof tutto il buffer
+
+        close(file_descriptor[1]); // chiudo anche questo per ottimizzare la memoria
 
         exit(0);
     }
 
     // Processo padre
+    close(file_descriptor[1]);
+
+    printf("Aspetto il messaggio...\n"); // si aspettano 3 secondi e arriva giusto dato che il kernal li sincronizza
     char buffer[100]; // array 100 elementi dato che non sappiamo cosa ci arriva
 
-    read(file_descriptor[0], buffer, sizeof(buffer)); // parametri = al write, ma invertito, cioè legge
-    
+    // lunghezza di byte
+    ssize_t byte_number = read(file_descriptor[0], buffer, sizeof(buffer)); // parametri = al write, ma invertito, cioè legge
+
+    for (int i = 0; i < byte_number; i++) {
+        printf("%c", buffer[i]); // stampa uno alla volta senza terminatore, dato che c'è msg - 1
+    }
+
+    printf("%p\n", byte_number);
+    printf("[PADRE] %s", buffer); // dovrebbe stampare fino al terminatore
+    // printf stampa finchè non trova il terminatore (\0)
+    // read ritorna il numero di byte letti
+
+    close(file_descriptor[0]);
 
     return 0;
 }
